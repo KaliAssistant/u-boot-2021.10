@@ -110,7 +110,9 @@
 
 #ifdef CONFIG_NAND_SUPPORT
 	/*#define CONFIG_ENV_IS_IN_NAND*/ /* env in nand flash */
+#ifndef CONFIG_CMD_NAND
 	#define CONFIG_CMD_NAND
+#endif
 	#define CONFIG_SYS_MAX_NAND_DEVICE	 1
 
 	#define CONFIG_NAND_FLASH_CVSNFC
@@ -144,6 +146,10 @@
 	#define CONFIG_SYS_NAND_BASE_LIST		{CONFIG_SYS_NAND_BASE}
 
 #endif /* CONFIG_NAND_SUPPORT */
+
+#ifdef CONFIG_SPL_NAND_SUPPORT
+	#define CONFIG_NAND_FLASH_CVSNFC_SPL
+#endif /* CONFIG_SPL_NAND_SUPPORT */
 
 /* Monitor Command Prompt */
 #define CONFIG_SYS_CBSIZE		512	/* Console I/O Buffer Size */
@@ -212,9 +218,17 @@
 	#ifdef CONFIG_NAND_SUPPORT
 		#ifdef CONFIG_SKIP_RAMDISK
 			#define ROOTARGS "ubi.mtd=ROOTFS ubi.block=0,0 root=/dev/ubiblock0_0 rootfstype=squashfs"
+            #ifdef CONFIG_CMD_BOOT_MODE_NAND
+			    #define ROOTARGSA "ubi.mtd=ROOTFS ubi.block=0,0 root=/dev/ubiblock0_0 rootfstype=squashfs"
+			    #define ROOTARGSB "ubi.mtd=ROOTFS_B ubi.block=0,0 root=/dev/ubiblock0_0 rootfstype=squashfs"
+            #endif
 
 		#else
 			#define ROOTARGS "ubi.mtd=ROOTFS ubi.block=0,0"
+            #ifdef CONFIG_CMD_BOOT_MODE_NAND
+			    #define ROOTARGSA "ubi.mtd=ROOTFS ubi.block=0,0"
+			    #define ROOTARGSB "ubi.mtd=ROOTFS_B ubi.block=0,0"
+            #endif
 		#endif /* CONFIG_SKIP_RAMDISK */
 	#elif defined(CONFIG_SD_BOOT)
 		#define ROOTARGS "root=" ROOTFS_DEV " rootwait rw"
@@ -327,12 +341,19 @@
 	/* For spi nand boot, need to reset DMA and its setting before exiting uboot */
 	/* 0x4330058 : DMA reset */
 	/* 0x3000154 : restore DMA remap to 0 */
-
-		#define CONFIG_NANDBOOTCOMMAND \
-				SET_BOOTARGS \
-				"nand read ${uImage_addr} BOOT;" \
-				"mw.l 4330058 1 1; md.l 4330058 1; mw.l 3000154 0 1;" \
-				UBOOT_VBOOT_BOOTM_COMMAND
+        #if defined(CONFIG_CMD_BOOT_MODE_NAND)
+            #define CONFIG_NANDBOOTCOMMAND \
+                    "loadboot_nand ;" \
+                    SET_BOOTARGS \
+                    "mw.l 4330058 1 1; md.l 4330058 1; mw.l 3000154 0 1;" \
+                    UBOOT_VBOOT_BOOTM_COMMAND
+        #else
+            #define CONFIG_NANDBOOTCOMMAND \
+                    SET_BOOTARGS \
+            	    "nand read ${uImage_addr} BOOT;" \
+                    "mw.l 4330058 1 1; md.l 4330058 1; mw.l 3000154 0 1;" \
+                    UBOOT_VBOOT_BOOTM_COMMAND
+        #endif
 	#elif defined(CONFIG_SPI_FLASH)
 		#define CONFIG_NORBOOTCOMMAND \
 				SET_BOOTARGS \
